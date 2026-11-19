@@ -195,8 +195,7 @@ fn sync_oauth2s(
         if oauth2.present {
             let mut do_create = false;
             if let Some(entity) = existing_oauth2s.get(name) {
-                // Ensure that the client is of correct type (basic/public)
-                // otherwise we need to delete and recreate.
+                // Changing the client type would destroy the existing client and its secret.
 
                 let is_public = match entity.pointer("/attrs/class") {
                     Some(Value::Array(x)) => x.iter().any(|x| x.as_str() == Some("oauth2_resource_server_public")),
@@ -204,8 +203,7 @@ fn sync_oauth2s(
                 };
 
                 if is_public != oauth2.public {
-                    kanidm_client.delete_entity(ENDPOINT_OAUTH2, name)?;
-                    do_create = true;
+                    bail!("OAuth2 client '{name}' already exists with a different client type");
                 }
             } else {
                 if preexisting_entity_names.contains(name) {
@@ -406,6 +404,16 @@ fn main() -> Result<()> {
     color_eyre::install()?;
     let args = Cli::parse();
     let state = State::new(args.state)?;
+    if state.groups.values().any(|group| !group.present)
+        || state.persons.values().any(|person| !person.present)
+        || state
+            .systems
+            .oauth2
+            .values()
+            .any(|client| !client.present || client.remove_orphaned_claim_maps)
+    {
+        bail!("Explicit entity deletion and orphaned claim map cleanup are disabled. Set present to true and removeOrphanedClaimMaps to false.");
+    }
     let tracked_entities = all_tracked_entities(&state)?;
     let kanidm_client = KanidmClient::new(&args.url, args.accept_invalid_certs, args.connect_to)?;
 
