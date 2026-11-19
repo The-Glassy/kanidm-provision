@@ -21,12 +21,12 @@ PRs are of course welcome!
 ---|---
 | |
 | 👪 | **Groups**
-| ✅ | Create/delete
+| ✅ | Create
 | ✅ | Members
 | ✅ | Unix attributes
 | |
 | 🧑 | **Persons**
-| ✅ | Create/delete
+| ✅ | Create
 | ✅ | Attributes (displayname, legalname, mail)
 | ❌ | Credentials
 | ❌ | SSH
@@ -34,7 +34,7 @@ PRs are of course welcome!
 | ❌ | Radius
 | |
 | 🌐 | **Oauth2**
-| ✅ | Create/delete (basic, public)
+| ✅ | Create (basic, public)
 | ✅ | Attributes (origin url, origin landing, pkce enable, prefer short username)
 | ✅* | Basic secret
 | ✅ | Scope maps
@@ -64,14 +64,11 @@ This tool automatically adds all created entities to a tracking group so
 whenever something is removed from the state file in the future, the change
 can be reflected in kanidm automatically.
 
-To prevent this kind of orphan removal, you can to pass `--no-auto-remove`.
-Removing for example a group from the state file will then not cause any
-changes in kanidm, unless the state file explicitly specifies `present: false`.
+Pass `--no-auto-remove` to keep tracked entities when you remove them from the state file.
 
-This automatic tracking does not work for oauth2 claim maps, since claim maps
-are not a separate entity in kanidm. To work around that, each oauth2 resource server
-has a `removeOrphanedClaimMaps` option that will delete any claim maps on the resource
-server that haven't been created by this tool. `--no-auto-remove` has no effect on that option.
+This fork rejects state files with `present: false` and requires
+`removeOrphanedClaimMaps: false` on every OAuth2 client. A client whose type differs
+from the state causes reconciliation to fail so that its existing configuration is preserved.
 
 ## Provisioning oauth2 basic secrets
 
@@ -113,7 +110,7 @@ E.g. `person1` is allowed, `Person1` or `pErSoN1` are not.
     # One entry per group
     "group1": {
       # Optional. Defaults to true if not given.
-      # Whether the group should be present or absent.
+      # This fork requires the group to be present.
       "present": true,
       # The exhaustive list of group members.
       "members": [
@@ -140,7 +137,7 @@ E.g. `person1` is allowed, `Person1` or `pErSoN1` are not.
     # One entry per person
     "person1": {
       # Optional. Defaults to true if not given.
-      # Whether the person should be present or absent.
+      # This fork requires the person to be present.
       "present": true,
       # Required.
       "displayName": "Person1",
@@ -165,7 +162,7 @@ E.g. `person1` is allowed, `Person1` or `pErSoN1` are not.
       # One entry per oauth2 resource server
       "forgejo": {
         # Optional. Defaults to true if not given.
-        # Whether the oauth2 resource server should be present or absent.
+        # This fork requires the oauth2 resource server to be present.
         "present": true,
         # Optional. Defaults to false if not given.
         # Whether the oauth2 resource server should be a public one (i.e. no basic secret, enforces PKCE and can allow localhost redirect).
@@ -213,10 +210,8 @@ E.g. `person1` is allowed, `Person1` or `pErSoN1` are not.
             "additional_scope"
           ]
         },
-        # Optional. Defaults to true.
-        # If true, any claim maps found on the resource server that are
-        # not explicitly specified in here will be removed.
-        "removeOrphanedClaimMaps": true,
+        # Required by this fork. Set to false to retain orphaned claim maps.
+        "removeOrphanedClaimMaps": false,
         # Optional.
         # Claim maps will add a new claim with values depending on the
         # kanidm groups of the authenticating party.
